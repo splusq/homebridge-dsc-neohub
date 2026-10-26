@@ -1,0 +1,52 @@
+{
+  "name": "homebridge-dsc-neohub",
+  "displayName": "DSC Neo (NeoHub)",
+  "version": "0.1.0",
+  "description": "Homebridge plugin for DSC PowerSeries Neo alarm panels via a local NeoHub (ITv2/TL280) server.",
+  "type": "module",
+  "main": "dist/index.js",
+  "license": "MIT",
+  "author": "Salman Quazi",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/splusq/homebridge-dsc-neohub.git"
+  },
+  "bugs": {
+    "url": "https://github.com/splusq/homebridge-dsc-neohub/issues"
+  },
+  "homepage": "https://github.com/splusq/homebridge-dsc-neohub#readme",
+  "keywords": [
+    "homebridge-plugin",
+    "dsc",
+    "neo",
+    "powerseries",
+    "tl280",
+    "alarm",
+    "security-system"
+  ],
+  "files": [
+    "dist",
+    "config.schema.json",
+    "README.md"
+  ],
+  "engines": {
+    "homebridge": "^1.8.0 || ^2.0.0",
+    "node": "^20.18.0 || ^22.10.0 || ^24.0.0"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/*.test.ts",
+    "mock": "node test/mock-neohub.ts",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/ws": "^8.18.2",
+    "homebridge": "^2.4.0",
+    "typescript": "^5.9.0"
+  }
+}

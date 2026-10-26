@@ -1,0 +1,85 @@
+{
+  "pluginAlias": "DSCNeoHub",
+  "pluginType": "platform",
+  "singular": true,
+  "headerDisplay": "Connects to a local [NeoHub](https://github.com/BrianHumlicek/NeoHub) server, which talks to a DSC PowerSeries Neo panel through a TL280 communicator.",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "default": "DSC Neo",
+        "required": true
+      },
+      "host": {
+        "title": "NeoHub host",
+        "type": "string",
+        "default": "localhost",
+        "description": "Hostname or IP of the machine running NeoHub."
+      },
+      "port": {
+        "title": "NeoHub web port",
+        "type": "integer",
+        "default": 8080
+      },
+      "userCode": {
+        "title": "User code",
+        "type": "string",
+        "pattern": "^[0-9]{4,8}$",
+        "description": "Panel user code sent with arm/disarm. Leave empty to use the default access code configured in NeoHub."
+      },
+      "commandTimeoutSeconds": {
+        "title": "Command timeout (seconds)",
+        "type": "integer",
+        "default": 15,
+        "minimum": 5,
+        "description": "How long to wait for the panel to react to an arm/disarm before HomeKit reverts."
+      },
+      "partitions": {
+        "title": "Partitions",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "partition": { "title": "Partition", "type": "integer", "minimum": 1, "required": true },
+            "name": { "title": "Name", "type": "string" }
+          }
+        }
+      },
+      "zones": {
+        "title": "Zones",
+        "description": "NeoHub doesn't report zone types, so every zone defaults to a contact sensor. Set the type here, or hide zones you don't want in HomeKit.",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "zone": { "title": "Zone", "type": "integer", "minimum": 1, "required": true },
+            "name": { "title": "Name", "type": "string" },
+            "type": {
+              "title": "Type",
+              "type": "string",
+              "default": "contact",
+              "oneOf": [
+                { "title": "Contact (door/window)", "enum": ["contact"] },
+                { "title": "Motion", "enum": ["motion"] },
+                { "title": "Smoke", "enum": ["smoke"] },
+                { "title": "Leak", "enum": ["leak"] },
+                { "title": "Carbon monoxide", "enum": ["co"] },
+                { "title": "Hidden", "enum": ["hidden"] }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "layout": [
+    "name",
+    { "type": "flex", "flex-flow": "row wrap", "items": ["host", "port"] },
+    { "key": "userCode", "type": "password" },
+    "commandTimeoutSeconds",
+    { "key": "partitions", "type": "array", "expandable": true, "expanded": false, "items": ["partitions[].partition", "partitions[].name"] },
+    { "key": "zones", "type": "array", "expandable": true, "expanded": true, "items": ["zones[].zone", "zones[].name", "zones[].type"] }
+  ]
+}
