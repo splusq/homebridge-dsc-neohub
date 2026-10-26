@@ -2,6 +2,10 @@
 
 Release notes for each version are taken from the matching section below.
 
+## 0.1.2
+
+- Releases now publish from GitHub Actions via npm trusted publishing (no stored npm token).
+
 ## 0.1.1
 
 - First release published to npm, so updates show up in the Homebridge UI.

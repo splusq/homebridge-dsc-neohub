@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # create the GitHub release
-      id-token: write # npm provenance / trusted publishing
+      id-token: write # npm trusted publishing + provenance
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -27,6 +27,8 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
           cache: npm
+      # Trusted publishing needs npm 11.5.1+.
+      - run: npm install -g npm@^11.5.1
       - run: npm ci
 
       - name: Check tag matches package.json version
@@ -61,10 +63,8 @@ jobs:
             *-*) dist_tag=beta ;;
             *) dist_tag=latest ;;
           esac
+          # Authenticates via npm trusted publishing (OIDC); no token needed.
           npm publish --provenance --access public --tag "$dist_tag"
-        env:
-          # Used if set; otherwise npm falls back to trusted publishing (OIDC).
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub release
         run: |
