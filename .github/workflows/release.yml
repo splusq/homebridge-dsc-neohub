@@ -52,6 +52,11 @@ jobs:
 
       - name: Publish to npm
         run: |
+          name_version="$(node -p 'const p = require("./package.json"); p.name + "@" + p.version')"
+          if npm view "$name_version" version >/dev/null 2>&1; then
+            echo "$name_version is already on npm; skipping publish"
+            exit 0
+          fi
           case "$GITHUB_REF_NAME" in
             *-*) dist_tag=beta ;;
             *) dist_tag=latest ;;
