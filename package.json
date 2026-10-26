@@ -1,7 +1,7 @@
 {
   "name": "homebridge-dsc-neohub",
   "displayName": "DSC Neo (NeoHub)",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Homebridge plugin for DSC PowerSeries Neo alarm panels via a local NeoHub (ITv2/TL280) server.",
   "type": "module",
   "main": "dist/index.js",

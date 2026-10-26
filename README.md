@@ -8,14 +8,20 @@ Homebridge plugin for DSC PowerSeries Neo panels, via a local [NeoHub](https://g
 
 ## Install
 
-Not on npm yet; install from GitHub into your Homebridge storage directory (builds on install):
+Search for **homebridge-dsc-neohub** in the Homebridge UI's Plugins tab, or:
 
 ```bash
-cd /var/lib/homebridge
-sudo -u homebridge env PATH=/opt/homebridge/bin:$PATH npm install --save github:splusq/homebridge-dsc-neohub#v0.1.0
+npm install -g homebridge-dsc-neohub
 ```
 
-Then add the platform below and restart Homebridge.
+Then add the platform below (or use the plugin's settings form) and restart Homebridge.
+
+## Releasing
+
+1. Add a `## x.y.z` section to `CHANGELOG.md` and bump `version` in `package.json`.
+2. Commit, then `git tag vx.y.z && git push origin main vx.y.z`.
+
+The Release workflow tests, publishes to npm with provenance, and creates the GitHub release from the changelog section.
 
 ## Config
 

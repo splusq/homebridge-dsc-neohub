@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Homebridge-supported Node versions (see "engines" in package.json).
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      # Tests run .ts files directly, which needs Node 22.18+ type stripping.
+      - run: npm test
+        if: matrix.node != 20
+      - name: Check built plugin loads
+        run: node -e "import('./dist/index.js').then(m => { if (typeof m.default !== 'function') process.exit(1) })"

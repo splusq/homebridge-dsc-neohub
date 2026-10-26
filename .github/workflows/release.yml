@@ -1,0 +1,70 @@
+# Push a tag like v0.2.0 (matching package.json) to test, publish to npm, and
+# create a GitHub release with notes from that version's CHANGELOG.md section.
+# Prerelease tags (v0.2.0-beta.1) publish under the npm "beta" dist-tag.
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the GitHub release
+      id-token: write # npm provenance / trusted publishing
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - run: npm ci
+
+      - name: Check tag matches package.json version
+        run: |
+          version="v$(node -p 'require("./package.json").version')"
+          if [ "$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version"
+            exit 1
+          fi
+
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            $0 ~ "^## " { if (found) exit; found = ($2 == v); next }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "::error::No '## $version' section in CHANGELOG.md"
+            exit 1
+          fi
+          cat notes.md
+
+      - name: Publish to npm
+        run: |
+          case "$GITHUB_REF_NAME" in
+            *-*) dist_tag=beta ;;
+            *) dist_tag=latest ;;
+          esac
+          npm publish --provenance --access public --tag "$dist_tag"
+        env:
+          # Used if set; otherwise npm falls back to trusted publishing (OIDC).
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub release
+        run: |
+          flags=""
+          case "$GITHUB_REF_NAME" in *-*) flags="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file notes.md $flags
+        env:
+          GH_TOKEN: ${{ github.token }}
