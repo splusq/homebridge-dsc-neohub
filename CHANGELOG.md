@@ -1,6 +1,7 @@
 # Changelog
 
-Release notes for each version are taken from the matching section below.
+Releases after 0.1.2 are published automatically and their notes live on the
+[GitHub releases page](https://github.com/splusq/homebridge-dsc-neohub/releases).
 
 ## 0.1.2
 

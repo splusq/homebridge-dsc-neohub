@@ -1,31 +1,46 @@
 name: CI
 
 on:
+  pull_request:
   push:
     branches: [main]
-  pull_request:
-  workflow_call:
 
 permissions:
   contents: read
 
 jobs:
-  test:
+  node:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         # Homebridge-supported Node versions (see "engines" in package.json).
         node: [20, 22, 24]
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      - run: npm ci
+
+      - run: npm ci --ignore-scripts
+
       - run: npm run typecheck
+
       # Tests run .ts files directly, which needs Node 22.18+ type stripping.
       - run: npm test
         if: matrix.node != 20
+
+      - run: npm run build
+
       - name: Check built plugin loads
         run: node -e "import('./dist/index.js').then(m => { if (typeof m.default !== 'function') process.exit(1) })"
+
+  # The single required status check for main. A skipped required check counts
+  # as passing, so this always runs and fails unless every matrix job passed.
+  test:
+    needs: node
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.node.result }}" = success
