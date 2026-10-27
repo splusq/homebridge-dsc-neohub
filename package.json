@@ -38,7 +38,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.ts",
     "mock": "node test/mock-neohub.ts",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm test"
   },
   "dependencies": {
     "ws": "^8.22.0"

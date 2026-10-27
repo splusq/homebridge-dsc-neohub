@@ -18,10 +18,11 @@ Then add the platform below (or use the plugin's settings form) and restart Home
 
 ## Releasing
 
-1. Add a `## x.y.z` section to `CHANGELOG.md` and bump `version` in `package.json`.
-2. Commit, then `git tag vx.y.z && git push origin main vx.y.z`.
+Releases are automatic. Every other day the Release workflow checks whether anything that ships changed since the latest `v*` tag; if so it bumps the patch version, publishes to npm with provenance (via trusted publishing, no token), and creates the tag and GitHub release. Run it now with `gh workflow run release.yml`.
 
-The Release workflow tests, publishes to npm with provenance, and creates the GitHub release from the changelog section.
+For a minor or major version, publish a GitHub release by hand (for example `v0.2.0`); mark it as a prerelease to publish under the `beta` dist-tag. Version bumps are not committed back to `main`, so git tags, not `package.json`, are the version history.
+
+Dependabot patch and minor updates merge themselves once the `test` check passes.
 
 ## Config
 

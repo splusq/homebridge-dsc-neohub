@@ -1,75 +1,89 @@
-# Push a tag like v0.2.0 (matching package.json) to test, publish to npm, and
-# create a GitHub release with notes from that version's CHANGELOG.md section.
-# Prerelease tags (v0.2.0-beta.1) publish under the npm "beta" dist-tag.
 name: Release
 
+# Publishes to npm in two ways:
+# - Every other day (or on demand), if anything that ships changed since the
+#   latest v* tag, it bumps the patch version, publishes, and creates the tag
+#   and GitHub release. With no changes it exits early.
+# - When a GitHub release is published by hand, it publishes that tag's
+#   version. Prerelease GitHub releases go out under the "beta" dist-tag.
+#
+# Git tags are the source of truth for the version: bumps are not committed
+# back to main, so package.json in the repo may lag behind npm.
 on:
-  push:
-    tags: ['v*.*.*']
+  schedule:
+    - cron: "0 15 */2 * *"
+  workflow_dispatch:
+  release:
+    types: [published]
 
 permissions:
-  contents: read
+  contents: write # create tags and releases
+  id-token: write # npm trusted publishing (OIDC) and provenance
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
-  test:
-    uses: ./.github/workflows/ci.yml
-
-  release:
-    needs: test
+  publish:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # create the GitHub release
-      id-token: write # npm trusted publishing + provenance
+    environment: npm
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Decide version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "release" ]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          last="$(git tag --list 'v*' --sort=-v:refname | head -n 1)"
+          if [ -n "$last" ] && git diff --quiet "$last" HEAD -- \
+              src package.json package-lock.json tsconfig.json config.schema.json README.md; then
+            echo "No changes since $last; nothing to release."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          base="${last#v}"
+          base="${base:-$(node -p "require('./package.json').version")}"
+          next="$(npx --yes semver@7 -i patch "$base")"
+          echo "Releasing $next (changes since ${last:-the beginning})"
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+          echo "create_release=true" >> "$GITHUB_OUTPUT"
+
+      - if: steps.version.outputs.publish == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
           cache: npm
-      # Trusted publishing needs npm 11.5.1+.
-      - run: npm install -g npm@^11.5.1
-      - run: npm ci
 
-      - name: Check tag matches package.json version
-        run: |
-          version="v$(node -p 'require("./package.json").version')"
-          if [ "$version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version"
-            exit 1
-          fi
+      # Trusted publishing needs npm >= 11.5.1
+      - if: steps.version.outputs.publish == 'true'
+        run: npm install -g npm@latest
 
-      - name: Extract release notes from CHANGELOG.md
-        run: |
-          version="${GITHUB_REF_NAME#v}"
-          awk -v v="$version" '
-            $0 ~ "^## " { if (found) exit; found = ($2 == v); next }
-            found { print }
-          ' CHANGELOG.md > notes.md
-          if ! grep -q '[^[:space:]]' notes.md; then
-            echo "::error::No '## $version' section in CHANGELOG.md"
-            exit 1
-          fi
-          cat notes.md
+      - if: steps.version.outputs.publish == 'true'
+        run: npm ci --ignore-scripts
 
-      - name: Publish to npm
-        run: |
-          name_version="$(node -p 'const p = require("./package.json"); p.name + "@" + p.version')"
-          if npm view "$name_version" version >/dev/null 2>&1; then
-            echo "$name_version is already on npm; skipping publish"
-            exit 0
-          fi
-          case "$GITHUB_REF_NAME" in
-            *-*) dist_tag=beta ;;
-            *) dist_tag=latest ;;
-          esac
-          # Authenticates via npm trusted publishing (OIDC); no token needed.
-          npm publish --provenance --access public --tag "$dist_tag"
+      - if: steps.version.outputs.publish == 'true'
+        run: npm version "${{ steps.version.outputs.version }}" --no-git-tag-version --allow-same-version
 
-      - name: Create GitHub release
-        run: |
-          flags=""
-          case "$GITHUB_REF_NAME" in *-*) flags="--prerelease" ;; esac
-          gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file notes.md $flags
+      # prepublishOnly runs the build and tests
+      - name: Publish
+        if: steps.version.outputs.publish == 'true'
+        run: npm publish --provenance --access public --tag ${{ github.event.release.prerelease && 'beta' || 'latest' }}
+
+      - name: Create tag and GitHub release
+        if: steps.version.outputs.create_release == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+        run: gh release create "v${{ steps.version.outputs.version }}" --target "$GITHUB_SHA" --generate-notes
