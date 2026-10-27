@@ -48,6 +48,6 @@
     "@types/node": "^24.0.0",
     "@types/ws": "^8.18.2",
     "homebridge": "^2.4.0",
-    "typescript": "^5.9.0"
+    "typescript": "^7.0.2"
   }
 }
