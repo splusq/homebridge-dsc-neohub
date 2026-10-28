@@ -24,6 +24,7 @@ export class PartitionAccessory {
   private readonly service: Service;
   private state: SecurityState = INITIAL_STATE;
   private available = false;
+  private lastStatus?: PartitionStatus;
   private timeout?: NodeJS.Timeout;
 
   constructor(platform: NeoHubPlatform, accessory: PlatformAccessory<PartitionContext>) {
@@ -64,7 +65,10 @@ export class PartitionAccessory {
   }
 
   updateStatus(status: PartitionStatus): void {
-    this.platform.log.info(`${this.accessory.displayName}: ${status}`);
+    // The panel repeats its status every few seconds; only log changes at info.
+    const log = status === this.lastStatus ? this.platform.log.debug : this.platform.log.info;
+    log.call(this.platform.log, `${this.accessory.displayName}: ${status}`);
+    this.lastStatus = status;
     // Any response from the panel means the request was accepted or superseded.
     if (status !== 'unknown') {
       this.clearTimeout();
