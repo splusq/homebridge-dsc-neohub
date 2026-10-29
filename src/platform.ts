@@ -7,6 +7,7 @@ import type {
   PlatformConfig,
 } from 'homebridge';
 import { NeoHubClient } from './client.ts';
+import { zoneTypeFor } from './mapping.ts';
 import { PartitionAccessory, type PartitionContext } from './partitionAccessory.ts';
 import type { FullStateMessage, SessionDto } from './protocol.ts';
 import { PLATFORM_NAME, PLUGIN_NAME, parseConfig, type PluginConfig } from './settings.ts';
@@ -117,7 +118,7 @@ export class NeoHubPlatform implements DynamicPlatformPlugin {
 
     for (const z of session.zones) {
       const zoneConfig = this.config.zones.get(z.zone_number);
-      const type = zoneConfig?.type ?? 'contact';
+      const type = zoneConfig?.type ?? zoneTypeFor(z.device_class);
       const uuid = this.uuid({ kind: 'zone', sessionId, zone: z.zone_number, type });
       if (type === 'hidden') {
         this.remove(uuid);

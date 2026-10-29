@@ -103,3 +103,19 @@ export type ZoneType = (typeof ZONE_TYPES)[number];
 export function isZoneType(value: unknown): value is ZoneType {
   return typeof value === 'string' && (ZONE_TYPES as readonly string[]).includes(value);
 }
+
+// NeoHub reports Home Assistant binary_sensor device classes, derived from the
+// panel's zone definitions when it has the installer code (otherwise "door").
+const DEVICE_CLASS_TYPES = new Map<string, Exclude<ZoneType, 'hidden'>>([
+  ['motion', 'motion'],
+  ['smoke', 'smoke'],
+  ['heat', 'smoke'],
+  ['carbon_monoxide', 'co'],
+  ['gas', 'co'],
+  ['moisture', 'leak'],
+]);
+
+/** Sensor type for a NeoHub device class; classes HomeKit has no sensor for are contact sensors. */
+export function zoneTypeFor(deviceClass: string | undefined): Exclude<ZoneType, 'hidden'> {
+  return DEVICE_CLASS_TYPES.get(deviceClass ?? '') ?? 'contact';
+}

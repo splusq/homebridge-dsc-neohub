@@ -21,7 +21,7 @@ export function demoSession(): SessionDto {
     zones: [
       { zone_number: 1, name: 'Front Door', device_class: 'door', open: false, bypassed: false, partitions: [1] },
       { zone_number: 2, name: 'Back Door', device_class: 'door', open: false, bypassed: false, partitions: [1] },
-      { zone_number: 3, name: 'Hall Motion', device_class: 'door', open: false, bypassed: false, partitions: [1] },
+      { zone_number: 3, name: 'Hall Motion', device_class: 'motion', open: false, bypassed: false, partitions: [1] },
       { zone_number: 4, name: 'Basement Window', device_class: 'door', open: false, bypassed: true, partitions: [1] },
     ],
   };
