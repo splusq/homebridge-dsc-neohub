@@ -49,7 +49,7 @@
       },
       "zones": {
         "title": "Zones",
-        "description": "NeoHub doesn't report zone types, so every zone defaults to a contact sensor. Set the type here, or hide zones you don't want in HomeKit.",
+        "description": "Zones not listed here, or set to Automatic, get their type from the panel's zone definitions (needs ghcr.io/splusq/neohub with the installer code set in NeoHub; otherwise they're contact sensors). Set a type to override, or hide zones you don't want in HomeKit.",
         "type": "array",
         "items": {
           "type": "object",
@@ -59,8 +59,9 @@
             "type": {
               "title": "Type",
               "type": "string",
-              "default": "contact",
+              "default": "auto",
               "oneOf": [
+                { "title": "Automatic (from the panel)", "enum": ["auto"] },
                 { "title": "Contact (door/window)", "enum": ["contact"] },
                 { "title": "Motion", "enum": ["motion"] },
                 { "title": "Smoke", "enum": ["smoke"] },

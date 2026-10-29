@@ -6,7 +6,8 @@ export const PLATFORM_NAME = 'DSCNeoHub';
 export interface ZoneConfig {
   zone: number;
   name?: string;
-  type: ZoneType;
+  /** Unset means take the type from NeoHub's device class. */
+  type?: ZoneType;
 }
 
 export interface PartitionConfig {
@@ -28,8 +29,8 @@ export function parseConfig(raw: Record<string, unknown>, warn: (msg: string) =>
   const zones = new Map<number, ZoneConfig>();
   for (const entry of asArray(raw.zones)) {
     const zone = Number(entry.zone);
-    const type = entry.type ?? 'contact';
-    if (!Number.isInteger(zone) || zone < 1 || !isZoneType(type)) {
+    const type = entry.type === 'auto' ? undefined : entry.type;
+    if (!Number.isInteger(zone) || zone < 1 || (type !== undefined && !isZoneType(type))) {
       warn(`Ignoring invalid zone config: ${JSON.stringify(entry)}`);
       continue;
     }

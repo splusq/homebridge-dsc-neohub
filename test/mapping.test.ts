@@ -8,6 +8,7 @@ import {
   applyStatus,
   commandFor,
   revertRequest,
+  zoneTypeFor,
   type SecurityState,
 } from '../src/mapping.ts';
 import type { PartitionStatus } from '../src/protocol.ts';
@@ -74,4 +75,17 @@ test('targets map to NeoHub commands', () => {
   assert.equal(commandFor(TARGET.AWAY_ARM), 'arm_away');
   assert.equal(commandFor(TARGET.NIGHT_ARM), 'arm_night');
   assert.equal(commandFor(TARGET.DISARM), 'disarm');
+});
+
+test('NeoHub device classes map to HomeKit sensor types', () => {
+  assert.equal(zoneTypeFor('motion'), 'motion');
+  assert.equal(zoneTypeFor('smoke'), 'smoke');
+  assert.equal(zoneTypeFor('heat'), 'smoke');
+  assert.equal(zoneTypeFor('carbon_monoxide'), 'co');
+  assert.equal(zoneTypeFor('gas'), 'co');
+  assert.equal(zoneTypeFor('moisture'), 'leak');
+  // No HomeKit equivalent, unknown, or an older NeoHub without the field: contact.
+  for (const deviceClass of ['door', 'safety', 'tamper', 'problem', 'cold', 'constructor', '', undefined]) {
+    assert.equal(zoneTypeFor(deviceClass), 'contact');
+  }
 });

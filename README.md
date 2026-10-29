@@ -3,7 +3,7 @@
 Homebridge plugin for DSC PowerSeries Neo panels, via a local [NeoHub](https://github.com/BrianHumlicek/NeoHub) server talking ITv2 to a TL280(E) communicator. Fully local; no Alarm.com.
 
 - Each partition → **Security System** (Home / Away / Night / Off, alarm triggered).
-- Each zone → **sensor** (contact, motion, smoke, leak, CO, or hidden). Bypassed zones show as inactive.
+- Each zone → **sensor** (contact, motion, smoke, leak, CO, or hidden), detected from the panel's zone definitions or set in config. Bypassed zones show as inactive.
 - If NeoHub or the panel is unreachable, accessories show **No Response** rather than stale state.
 
 ## Install
@@ -34,8 +34,8 @@ Dependabot patch and minor updates merge themselves once the `test` check passes
   "port": 8080,
   "userCode": "1234",
   "zones": [
-    { "zone": 1, "name": "Front Door", "type": "contact" },
-    { "zone": 5, "name": "Hall", "type": "motion" },
+    { "zone": 1, "name": "Front Door" },
+    { "zone": 5, "name": "Hall Glass Break", "type": "motion" },
     { "zone": 8, "type": "hidden" }
   ]
 }
@@ -47,7 +47,23 @@ Dependabot patch and minor updates merge themselves once the `test` check passes
 | `userCode` | none | Sent with arm/disarm. Omit to use NeoHub's default access code. |
 | `commandTimeoutSeconds` | `15` | HomeKit reverts if the panel doesn't react in time. |
 | `partitions[]` | | `{ partition, name }` to rename partitions. |
-| `zones[]` | all `contact` | NeoHub doesn't report zone types, so set them here. |
+| `zones[]` | automatic | `{ zone, name, type }`. Without a `type` (or with `"auto"`) the type comes from the panel, see below. |
+
+## Zone types
+
+[splusq/NeoHub](https://github.com/splusq/NeoHub) (`ghcr.io/splusq/neohub`) reads each zone's definition from the panel when its **Installer Code** is set on NeoHub's Connections page, and reports it as a `device_class`:
+
+| Panel zone definition | `device_class` | HomeKit |
+|---|---|---|
+| Interior, Interior Stay/Away, Interior Delay, Night | `motion` | Motion sensor |
+| Fire, Heat, High Temperature | `smoke` / `heat` | Smoke sensor |
+| CO, Gas | `carbon_monoxide` / `gas` | Carbon monoxide sensor |
+| Flood | `moisture` | Leak sensor |
+| Everything else (Delay, Instant, panic, tamper, ...) | `door`, ... | Contact sensor |
+
+The definition says how the panel treats a zone, not what's wired to it, so set `type` for the exceptions (a glass-break detector on an Instant zone, say), or `hidden` for zones you don't want. Without an installer code, or with upstream NeoHub, every zone is a contact sensor unless configured.
+
+Changing a zone's type replaces its HomeKit service, so automations that used the old sensor need to be pointed at the new one.
 
 ## State mapping
 
