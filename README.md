@@ -63,7 +63,7 @@ Dependabot patch and minor updates merge themselves once the `test` check passes
 
 The definition says how the panel treats a zone, not what's wired to it, so set `type` for the exceptions (a glass-break detector on an Instant zone, say), or `hidden` for zones you don't want. Without an installer code, or with upstream NeoHub, every zone is a contact sensor unless configured.
 
-Changing a zone's type replaces its HomeKit service, so automations that used the old sensor need to be pointed at the new one.
+The detected type is only used when a zone's accessory is first created. After that, only a `type` set in config changes it, because NeoHub reports every zone as `door` until it has read the panel's zone definitions (after a restart or panel reconnect, say), and following that would swap sensors back and forth. Changing a zone's type replaces its HomeKit service, so automations that used the old sensor need to be pointed at the new one.
 
 ## State mapping
 
