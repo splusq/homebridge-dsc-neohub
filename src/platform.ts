@@ -7,7 +7,7 @@ import type {
   PlatformConfig,
 } from 'homebridge';
 import { NeoHubClient } from './client.ts';
-import { zoneTypeFor } from './mapping.ts';
+import { zoneTypeFor, type ZoneType } from './mapping.ts';
 import { PartitionAccessory, type PartitionContext } from './partitionAccessory.ts';
 import type { FullStateMessage, SessionDto } from './protocol.ts';
 import { PLATFORM_NAME, PLUGIN_NAME, parseConfig, type PluginConfig } from './settings.ts';
@@ -118,18 +118,25 @@ export class NeoHubPlatform implements DynamicPlatformPlugin {
 
     for (const z of session.zones) {
       const zoneConfig = this.config.zones.get(z.zone_number);
-      const type = zoneConfig?.type ?? zoneTypeFor(z.device_class);
-      const uuid = this.uuid({ kind: 'zone', sessionId, zone: z.zone_number, type });
-      if (type === 'hidden') {
+      const configured = zoneConfig?.type;
+      const detected = zoneTypeFor(z.device_class);
+      const uuid = this.uuid({ kind: 'zone', sessionId, zone: z.zone_number, type: configured ?? detected });
+      if (configured === 'hidden') {
         this.remove(uuid);
         continue;
       }
       const name = zoneConfig?.name ?? z.name ?? `Zone ${z.zone_number}`;
-      const handler = this.ensure({ kind: 'zone', sessionId, zone: z.zone_number, type }, name);
+      const handler = this.ensure({ kind: 'zone', sessionId, zone: z.zone_number, type: configured ?? detected }, name);
       if (handler instanceof ZoneAccessory) {
-        if (handler.accessory.context.type !== type) {
+        const type = zoneTypeToApply(handler.accessory.context.type, configured);
+        if (type !== handler.accessory.context.type) {
+          this.log.info(`${handler.accessory.displayName}: type ${handler.accessory.context.type} -> ${type}`);
           handler.setType(type);
           this.api.updatePlatformAccessories([handler.accessory]);
+        } else if (!configured && detected !== handler.accessory.context.type) {
+          this.log.debug(
+            `${handler.accessory.displayName}: NeoHub reports ${detected}, keeping ${handler.accessory.context.type}`,
+          );
         }
         handler.setAvailable(true);
         handler.update(z.open, z.bypassed);
@@ -187,9 +194,31 @@ export class NeoHubPlatform implements DynamicPlatformPlugin {
     return handler instanceof ZoneAccessory ? handler : undefined;
   }
 
-  /** Stable per session + partition/zone; deliberately excludes zone type and name. */
   private uuid(context: Context): string {
-    const id = context.kind === 'partition' ? `P${context.partition}` : `Z${context.zone}`;
-    return this.api.hap.uuid.generate(`${PLUGIN_NAME}:${context.sessionId}:${id}`);
+    return this.api.hap.uuid.generate(accessorySeed(context));
   }
+}
+
+/**
+ * The seed for an accessory's UUID. Stable per panel session + partition/zone, and deliberately
+ * excludes zone type and name. Changing it makes HomeKit see every accessory as new, which loses
+ * their names, rooms and automations, so test/platform.test.ts pins it to known values.
+ */
+export function accessorySeed(context: Context): string {
+  const id = context.kind === 'partition' ? `P${context.partition}` : `Z${context.zone}`;
+  return `${PLUGIN_NAME}:${context.sessionId}:${id}`;
+}
+
+/**
+ * The type an existing zone accessory should have. Only an explicit config type changes it:
+ * a changed type swaps the HomeKit service and breaks automations that used it, and NeoHub
+ * reports every zone as "door" until it has read the panel's zone definitions, so the
+ * detected type only applies when the accessory is first created.
+ */
+export function zoneTypeToApply(
+  current: ZoneType,
+  configured: ZoneType | undefined,
+): Exclude<ZoneType, 'hidden'> {
+  // Registered zone accessories are never "hidden"; hidden zones are unregistered instead.
+  return configured && configured !== 'hidden' ? configured : (current as Exclude<ZoneType, 'hidden'>);
 }
