@@ -6,6 +6,7 @@ import {
   applyRequest,
   applyStatus,
   commandFor,
+  isRedundant,
   revertRequest,
   type SecurityState,
   type TargetState,
@@ -99,6 +100,12 @@ export class PartitionAccessory {
     const target = value as TargetState;
     const command = commandFor(target);
     const { sessionId, partition } = this.accessory.context;
+
+    if (isRedundant(this.lastStatus, this.state, target, this.hasPendingRequest)) {
+      this.platform.log.debug(`${this.accessory.displayName}: ${command} skipped, panel is already there`);
+      this.push();
+      return;
+    }
 
     const sent = this.platform.client.sendCommand(command, sessionId, partition, this.platform.config.userCode);
     if (!sent) {
