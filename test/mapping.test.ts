@@ -7,6 +7,7 @@ import {
   applyRequest,
   applyStatus,
   commandFor,
+  isRedundant,
   revertRequest,
   zoneTypeFor,
   type SecurityState,
@@ -88,4 +89,28 @@ test('NeoHub device classes map to HomeKit sensor types', () => {
   for (const deviceClass of ['door', 'safety', 'tamper', 'problem', 'cold', 'constructor', '', undefined]) {
     assert.equal(zoneTypeFor(deviceClass), 'contact');
   }
+});
+
+test('a target the panel already reports is redundant', () => {
+  const disarmed = run(['disarmed']);
+  assert.equal(isRedundant('disarmed', disarmed, TARGET.DISARM, false), true);
+  assert.equal(isRedundant('armed_away', run(['armed_away']), TARGET.AWAY_ARM, false), true);
+  assert.equal(isRedundant('disarmed', disarmed, TARGET.AWAY_ARM, false), false);
+  assert.equal(isRedundant('armed_home', run(['armed_home']), TARGET.AWAY_ARM, false), false);
+});
+
+test('repeating a request still waiting on the panel is redundant', () => {
+  const requested = applyRequest(run(['disarmed']), TARGET.AWAY_ARM);
+  assert.equal(isRedundant('disarmed', requested, TARGET.AWAY_ARM, true), true);
+  assert.equal(isRedundant('disarmed', requested, TARGET.STAY_ARM, true), false);
+  // Once the request has timed out or been rejected, sending again is a retry.
+  assert.equal(isRedundant('disarmed', requested, TARGET.AWAY_ARM, false), false);
+});
+
+test('disarm during an exit or entry delay is never redundant', () => {
+  const arming = run(['disarmed', 'arming']);
+  assert.equal(isRedundant('arming', arming, TARGET.DISARM, false), false);
+  const pending = run(['armed_away', 'pending']);
+  assert.equal(isRedundant('pending', pending, TARGET.DISARM, false), false);
+  assert.equal(isRedundant('triggered', run(['armed_away', 'triggered']), TARGET.DISARM, false), false);
 });

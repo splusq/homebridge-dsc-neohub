@@ -86,6 +86,33 @@ export function revertRequest(state: SecurityState): SecurityState {
   return { ...rest, target: targetFor(state.current) };
 }
 
+/** The steady panel status each HomeKit target ends in. */
+const REACHED: Record<TargetState, PartitionStatus> = {
+  [TARGET.STAY_ARM]: 'armed_home',
+  [TARGET.AWAY_ARM]: 'armed_away',
+  [TARGET.NIGHT_ARM]: 'armed_night',
+  [TARGET.DISARM]: 'disarmed',
+};
+
+/**
+ * True when sending `target` would only repeat what the panel is already doing:
+ * it already reports that state, or the same request is still waiting on it.
+ *
+ * HomeKit can set a target twice (another device, an automation, a retry). The
+ * panel refuses the repeat ("Function Not Available"), which would otherwise be
+ * logged as a failure and roll back the target the first command just set.
+ * Exit and entry delays (`arming`, `pending`) never count, so a disarm during
+ * either one is always sent.
+ */
+export function isRedundant(
+  status: PartitionStatus | undefined,
+  state: SecurityState,
+  target: TargetState,
+  pending: boolean,
+): boolean {
+  return status === REACHED[target] || (pending && state.requested === target);
+}
+
 const COMMANDS: Record<TargetState, ArmCommand> = {
   [TARGET.STAY_ARM]: 'arm_home',
   [TARGET.AWAY_ARM]: 'arm_away',
